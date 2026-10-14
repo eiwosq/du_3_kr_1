@@ -345,6 +345,8 @@ const sourceGroups=[...document.querySelectorAll('.section[data-seminar] .task-g
 const sourceIdForGroup=group=>group.closest('.section').dataset.seminar+'-'+group.dataset.group;
 const sourceIds=sourceGroups.map(sourceIdForGroup);
 const state={tab:'memo',query:'',status:'all',sources:new Set(sourceIds),progress:{}};
+const scrollPositions=Object.fromEntries(tabs.map(tab=>[tab,{page:0,content:0}]));
+let scrollRestoreFrame=0;
 const normalize=s=>String(s??'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim();
 let memoryStorage={};
 function getStore(key){try{return localStorage.getItem(key)}catch{return memoryStorage[key]??null}}
@@ -353,7 +355,7 @@ function init(){
 try{const saved=JSON.parse(getStore(STORE_KEY)||'{}');if(saved&&typeof saved==='object')state.progress=saved;}catch{}
 try{const selected=JSON.parse(getStore(SOURCE_KEY)||'null');if(Array.isArray(selected)){const migrated=selected.flatMap(value=>Number.isInteger(value)?sourceIds.filter(id=>id.startsWith(value+'-')):[value]);state.sources=new Set(migrated.filter(id=>sourceIds.includes(id)))}}catch{}
 document.body.dataset.theme=getStore(THEME_KEY)==='dark'?'dark':'light';
-refreshTaskTags();refreshTheme();refreshStatuses();refreshCompletion();refreshSources();filterTasks();showTab('memo');
+refreshTaskTags();refreshTheme();refreshStatuses();refreshCompletion();refreshSources();filterTasks();showTab('memo',false);
 }
 function refreshTaskTags(){document.querySelectorAll('.section[data-seminar]').forEach(section=>{const seminarTag=section.querySelector('.section-title h2')?.textContent.trim()||'';section.querySelectorAll('.task-group').forEach(group=>{let tag=seminarTag;if(group.dataset.group==='homework'){const heading=group.querySelector('.group-heading h3')?.textContent.trim()||'';const homework=heading.replace(/\s*·\s*Вариант КР №\s*0$/,' (КР 1 В 0)');tag='Семинары Пегачковой · '+homework}group.querySelectorAll('.task').forEach(task=>{const badges=task.querySelector('.badges');const sourceBadge=badges?.querySelector('.badge.level');if(badges)badges.title=tag;if(sourceBadge)sourceBadge.textContent=tag;task.dataset.search+=' '+tag})})})}
 function statusOf(id){return ['todo','repeat','done'].includes(state.progress[id])?state.progress[id]:'todo'}
@@ -374,7 +376,9 @@ $('memoTodo').textContent=total-done-repeat;
 }
 function refreshTheme(){$('themeToggle').textContent=document.body.dataset.theme==='dark'?'☀️ Светлая':'🌙 Тёмная'}
 function toggleTheme(){document.body.dataset.theme=document.body.dataset.theme==='dark'?'light':'dark';setStore(THEME_KEY,document.body.dataset.theme);refreshTheme()}
-function showTab(tab){if(!tabs.includes(tab))return;state.tab=tab;tabs.forEach(name=>{$((name==='memo'?'memo':name)+'Page').hidden=name!==tab;});document.querySelectorAll('[data-tab]').forEach(el=>{el.classList.toggle('active',el.dataset.tab===tab);el.setAttribute('aria-selected',String(el.dataset.tab===tab))});document.body.classList.toggle('is-theory',tab==='theory');window.scrollTo(0,0)}
+function saveScrollPosition(tab=state.tab){const position=scrollPositions[tab];if(!position)return;position.page=window.scrollY;if(tab==='theory')position.content=document.querySelector('.theory-content')?.scrollTop||0}
+function restoreScrollPosition(tab){const position=scrollPositions[tab]||{page:0,content:0};cancelAnimationFrame(scrollRestoreFrame);scrollRestoreFrame=requestAnimationFrame(()=>{if(state.tab!==tab)return;window.scrollTo(0,position.page);if(tab==='theory'){const scroller=document.querySelector('.theory-content');if(scroller)scroller.scrollTop=position.content}})}
+function showTab(tab,restore=true){if(!tabs.includes(tab))return;if(tab!==state.tab)saveScrollPosition();state.tab=tab;tabs.forEach(name=>{$((name==='memo'?'memo':name)+'Page').hidden=name!==tab;});document.querySelectorAll('[data-tab]').forEach(el=>{el.classList.toggle('active',el.dataset.tab===tab);el.setAttribute('aria-selected',String(el.dataset.tab===tab))});document.body.classList.toggle('is-theory',tab==='theory');if(restore)restoreScrollPosition(tab)}
 function refreshSources(){$('sourceList').innerHTML=sourceGroups.map(group=>{const id=sourceIdForGroup(group);const label=group.querySelector('.badge.level')?.textContent.trim()||id;return '<label class="source-option"><input type="checkbox" data-source="'+id+'" '+(state.sources.has(id)?'checked':'')+'><span>'+label+'</span></label>'}).join('');$('sourceSummary').textContent=state.sources.size===sourceIds.length?'Все источники':'Источники: '+state.sources.size+' из '+sourceIds.length}
 function saveSources(){setStore(SOURCE_KEY,JSON.stringify([...state.sources]));refreshSources();filterTasks()}
 function filterTasks(){const query=normalize($('taskSearch').value);const status=$('statusFilter').value;let count=0;
@@ -389,7 +393,7 @@ function filterTheory(){const q=normalize($('theorySearch').value);let count=0;d
 let toastTimer;
 function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1500)}
 function copyFallback(text){const el=document.createElement('textarea');el.value=text;el.style.cssText='position:fixed;left:-9999px';document.body.appendChild(el);el.select();let ok=false;try{ok=document.execCommand('copy')}catch{}el.remove();toast(ok?'Условие скопировано':'Не удалось скопировать')}
-function copyTask(id){const text=DATA.copy[id];if(!text)return;if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(text).then(()=>toast('Условие скопировано')).catch(()=>copyFallback(text));else copyFallback(text)}
+function copyTask(id){const taggedText=DATA.copy[id];if(!taggedText)return;const text=taggedText.replace(/^[^.]+\.\s*/,'').trim();if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(text).then(()=>toast('Условие скопировано')).catch(()=>copyFallback(text));else copyFallback(text)}
 document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>showTab(btn.dataset.tab)));
 $('themeToggle').addEventListener('click',toggleTheme);
 $('taskSearch').addEventListener('input',filterTasks);
