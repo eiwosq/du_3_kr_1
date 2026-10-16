@@ -57,9 +57,40 @@ body.is-theory .theory-content{height:100%;min-height:0;overflow-y:auto;padding-
 
 .theory-card+.theory-card{margin-top:20px}.trig-card h2{margin-bottom:16px}.trig-group+.trig-group{margin-top:22px}.trig-group h3{margin:0 0 10px;font-size:16px;color:var(--accent)}.trig-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}.trig-item{min-width:0;display:flex;align-items:center;justify-content:flex-start;min-height:50px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2);overflow-x:auto;overflow-y:hidden}.trig-item mjx-container{max-width:none}.trig-item[hidden],.trig-group[hidden],.theory-card[hidden],.trig-list[hidden],.theory-link[hidden],.integrals-scroll[hidden]{display:none!important}.trig-card{scroll-margin-top:8px}
 @media(max-width:560px){.trig-grid{grid-template-columns:minmax(0,1fr)}.trig-item{justify-content:flex-start}}
+
+/* Compact navigation and narrow-screen layout overrides. */
+.page>.page-title{display:none}
+.topbar{
+  height:54px;
+  min-height:54px;
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:center;
+  justify-content:flex-start;
+  gap:12px;
+  padding:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:thin;
+}
+.topbar h1,.topbar .tabs,.topbar .header-right{grid-column:auto;grid-row:auto;flex:0 0 auto}
+.topbar h1{white-space:nowrap}
+.topbar .tabs{justify-content:flex-start;overflow:visible;width:auto;padding:0;margin-left:auto}
+.topbar .header-right{justify-self:auto}
+.topbar::-webkit-scrollbar,.theory-nav::-webkit-scrollbar{height:7px}
+.theory-nav{scrollbar-width:thin}
+@media(max-width:1100px){
+  .topbar{height:54px;min-height:54px;padding:0}
+  body.is-theory main.wrap{height:calc(100vh - 54px)}
+}
+@media(max-width:900px){
+  .theory-nav{scrollbar-width:thin;padding-bottom:7px}
+  .memo-card,.memo-card.metric-card{grid-column:1/-1}
+}
+@media(max-width:560px){body.is-theory main.wrap{height:calc(100vh - 54px)}}
 </style>
 </head>
-<body>
+<body data-theme="dark">
 <header><div class="wrap topbar"><h1>ДУ 3 — КР 1 (2026)</h1><nav aria-label="Навигация" class="tabs"><button class="tab active" data-tab="memo" type="button">Памятка</button><button class="tab" data-tab="seminars" type="button">Семинары</button><button class="tab" data-tab="theory" type="button">Теория</button></nav><div class="header-right"><button class="theme-toggle" id="themeToggle" type="button">🌙 Тёмная</button></div></div></header>
 <main class="wrap">
 <section class="page" id="memoPage"><div class="memo-grid">
@@ -354,7 +385,7 @@ function setStore(key,value){try{localStorage.setItem(key,value)}catch{memorySto
 function init(){
 try{const saved=JSON.parse(getStore(STORE_KEY)||'{}');if(saved&&typeof saved==='object')state.progress=saved;}catch{}
 try{const selected=JSON.parse(getStore(SOURCE_KEY)||'null');if(Array.isArray(selected)){const migrated=selected.flatMap(value=>Number.isInteger(value)?sourceIds.filter(id=>id.startsWith(value+'-')):[value]);state.sources=new Set(migrated.filter(id=>sourceIds.includes(id)))}}catch{}
-document.body.dataset.theme=getStore(THEME_KEY)==='dark'?'dark':'light';
+document.body.dataset.theme=getStore(THEME_KEY)==='light'?'light':'dark';
 refreshTaskTags();refreshTheme();refreshStatuses();refreshCompletion();refreshSources();filterTasks();showTab('memo',false);
 }
 function refreshTaskTags(){document.querySelectorAll('.section[data-seminar]').forEach(section=>{const seminarTag=section.querySelector('.section-title h2')?.textContent.trim()||'';section.querySelectorAll('.task-group').forEach(group=>{let tag=seminarTag;if(group.dataset.group==='homework'){const heading=group.querySelector('.group-heading h3')?.textContent.trim()||'';const homework=heading.replace(/\s*·\s*Вариант КР №\s*0$/,' (КР 1 В 0)');tag='Семинары Пегачковой · '+homework}group.querySelectorAll('.task').forEach(task=>{const badges=task.querySelector('.badges');const sourceBadge=badges?.querySelector('.badge.level');if(badges)badges.title=tag;if(sourceBadge)sourceBadge.textContent=tag;task.dataset.search+=' '+tag})})})}
